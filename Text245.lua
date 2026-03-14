@@ -36,7 +36,7 @@ local function addBox(model)
 	box.AlwaysOnTop = true
 	box.Size = Vector3.new(4,6,2)
 	box.Color3 = Color3.fromRGB(255,255,255)
-	box.Transparency = 0.8
+	box.Transparency = 0.6
 	box.ZIndex = 5
 	box.Parent = root
 
