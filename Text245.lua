@@ -1,77 +1,88 @@
--- ===== TOGGLE =====
-if _G.AUTO_PUNCH then
-	_G.AUTO_PUNCH = false
-	print("AUTO PUNCH: OFF")
-	return
-end
+--------------------------------------------------
+-- TOGGLE
+--------------------------------------------------
+if getgenv().PLAYER_BOX_ESP then
+	getgenv().PLAYER_BOX_ESP = false
 
-_G.AUTO_PUNCH = true
-print("AUTO PUNCH: ON")
-
--- ===============================
--- SERVICIOS
--- ===============================
-local Players = game:GetService("Players")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-
-local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
-
--- CONFIG
-local START_DELAY = 3
-local CLICK_DELAY = 0.8
-local OFFSET_X = 2
-local OFFSET_Y = 4
-local SPIN_PAUSE = 7
-
-task.wait(START_DELAY)
-
--- Buscar botones
-local punchButton = playerGui:FindFirstChild("PunchButton", true)
-local spinButton = playerGui:FindFirstChild("Spin", true)
-
-if not punchButton then
-	warn("No se encontró PunchButton")
-	return
-end
-
--- ===============================
--- DETECTOR SPIN
--- ===============================
-local spinActive = false
-
-if spinButton then
-	spinButton.MouseButton1Down:Connect(function()
-		spinActive = true
-		
-		task.delay(SPIN_PAUSE, function()
-			spinActive = false
-		end)
-	end)
-end
-
--- ===============================
--- AUTO CLICK
--- ===============================
-task.spawn(function()
-
-	while _G.AUTO_PUNCH do
-		task.wait(CLICK_DELAY)
-
-		if spinActive then
-			continue
+	for _,v in ipairs(workspace:GetDescendants()) do
+		if v:IsA("BoxHandleAdornment") and v.Name == "PlayerBoxESP" then
+			v:Destroy()
 		end
-
-		local absPos = punchButton.AbsolutePosition
-		local absSize = punchButton.AbsoluteSize
-
-		local x = absPos.X + absSize.X / 1 + OFFSET_X
-		local y = absPos.Y + absSize.Y / 1 + OFFSET_Y
-
-		-- Presionar
-		VirtualInputManager:SendMouseButtonEvent(x,y,0,true,game,0)
-		task.wait(0.05)
-		VirtualInputManager:SendMouseButtonEvent(x,y,0,false,game,0)
 	end
+
+	return
+end
+
+getgenv().PLAYER_BOX_ESP = true
+--------------------------------------------------
+
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+local live = workspace:WaitForChild("Live")
+
+local function addBox(model)
+
+	if not getgenv().PLAYER_BOX_ESP then return end
+	if model.Name == lp.Name then return end
+	if not Players:FindFirstChild(model.Name) then return end
+	if model:FindFirstChild("PlayerBoxESP") then return end
+
+	local root = model:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+
+	local box = Instance.new("BoxHandleAdornment")
+	box.Name = "PlayerBoxESP"
+	box.Adornee = root
+	box.AlwaysOnTop = true
+	box.Size = Vector3.new(4,6,2)
+	box.Color3 = Color3.fromRGB(255,255,255)
+	box.Transparency = 0.8
+	box.ZIndex = 5
+	box.Parent = root
+
+end
+
+local function check(obj)
+
+	if not getgenv().PLAYER_BOX_ESP then return end
+
+	if obj:IsA("Highlight") and obj.Name == "Highlight" then
+		local model = obj:FindFirstAncestorOfClass("Model")
+
+		if model and Players:FindFirstChild(model.Name) and model.Name ~= lp.Name then
+			obj:Destroy()
+			addBox(model)
+		end
+	end
+
+	if obj:IsA("Model") and Players:FindFirstChild(obj.Name) and obj.Name ~= lp.Name then
+		task.defer(function()
+			addBox(obj)
+		end)
+	end
+
+end
+
+--------------------------------------------------
+-- revisar lo que ya existe
+--------------------------------------------------
+
+for _,v in ipairs(live:GetDescendants()) do
+	check(v)
+end
+
+--------------------------------------------------
+-- detectar cosas nuevas
+--------------------------------------------------
+
+live.DescendantAdded:Connect(function(v)
+
+	if not getgenv().PLAYER_BOX_ESP then return end
+
+	task.defer(function()
+		if v and v.Parent then
+			check(v)
+		end
+	end)
 
 end)
